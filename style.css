@@ -276,6 +276,238 @@ html, body {
   margin-top: 1rem;
 }
 
+.dashboard {
+  padding: 4rem 2rem;
+  background-color: #1e1e1e;
+}
+
+.dashboard-header {
+  max-width: 960px;
+  margin: 0 auto 2rem auto;
+  text-align: center;
+  color: #fff;
+}
+
+.dashboard-header h2 {
+  color: #e6adc4;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-panel {
+  background-color: #2f2f2f;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dashboard-panel h3 {
+  color: #e6adc4;
+  margin-bottom: 0.5rem;
+}
+
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.snapshot-grid .label {
+  color: #c7adb7;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.snapshot-grid .value {
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.snapshot-grid .value.highlight {
+  color: #8ce0d2;
+}
+
+.snapshot-grid .value.debt {
+  color: #ff8f8f;
+}
+
+.account-list,
+.investment-list,
+.insights-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.account-list li,
+.investment-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.account-name,
+.investment-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.account-type,
+.investment-value,
+.budget-detail {
+  color: #c7adb7;
+  font-size: 0.9rem;
+}
+
+.account-balance {
+  font-weight: 600;
+  color: #8ce0d2;
+}
+
+.account-balance.negative {
+  color: #ff8f8f;
+}
+
+.budget-row {
+  background-color: rgba(255, 255, 255, 0.02);
+  padding: 1rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.budget-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.status-pill {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pill.good {
+  background-color: rgba(140, 224, 210, 0.2);
+  color: #8ce0d2;
+}
+
+.status-pill.warning {
+  background-color: rgba(255, 193, 107, 0.2);
+  color: #ffc16b;
+}
+
+.status-pill.over {
+  background-color: rgba(255, 143, 143, 0.2);
+  color: #ff8f8f;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  background: linear-gradient(90deg, #e6adc4, #8ce0d2);
+}
+
+.progress.warning {
+  background: linear-gradient(90deg, #ffc16b, #e6adc4);
+}
+
+.progress.over {
+  background: linear-gradient(90deg, #ff8f8f, #ffc16b);
+}
+
+.budget-remaining {
+  color: #c7adb7;
+  font-size: 0.85rem;
+}
+
+.change {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.change.positive {
+  color: #8ce0d2;
+}
+
+.change.negative {
+  color: #ff8f8f;
+}
+
+.insights-list li {
+  color: #fff;
+  line-height: 1.5;
+  background-color: rgba(255, 255, 255, 0.03);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn.outline {
+  background: transparent;
+  border: 2px solid #e6adc4;
+  color: #e6adc4;
+}
+
+.btn.outline:hover {
+  background-color: rgba(230, 173, 196, 0.15);
+}
+
+.quick-actions .login-btn {
+  align-self: flex-start;
+}
+
+@media (max-width: 768px) {
+  .snapshot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
+    width: 95%;
+  }
+}
 
 /* Footer */
 footer {
