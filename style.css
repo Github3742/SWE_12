@@ -1,0 +1,287 @@
+/* General Styles */
+html, body {
+  background-color: #1e1e1e;
+  color: #00e0e0;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  color: #333;
+  margin: 0;
+  padding-top: 0;
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Navbar */
+.navbar {
+  position: sticky;
+  width: 100%;
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  padding: 1rem 0;
+}
+
+.navbar .container {
+  width: 90%;
+  max-width: 1300px;
+  margin: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.2rem;
+  color: #d5d4d4;
+  align-items: center;
+}
+
+.logo-icon {
+  width: 24px;
+  position: relative;
+  top: 1.2px;
+}
+.nav-links {
+  list-style: none;
+  display: flex;
+  align-items: center; /* vertical alignment for all links */
+  gap: 1rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #c7adb7;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  display: flex;       /* make flex so padding works consistently */
+  align-items: center; /* vertically center text inside */
+  height: 100%;        /* optional: match height of navbar container */
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: #e6adc4;
+}
+
+/* Buttons: nav login and form login */
+.nav-links a.login,
+.login-btn {
+  all: unset; /* resets default button/anchor styles */
+  display: inline-block;
+  background-color: #e6adc4;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.nav-links a.login:hover,
+.login-btn:hover {
+  background-color: #2f2f2f;
+}
+
+.login-btn:active {
+  transform: scale(0.95);
+}
+
+/* Hero Section */
+.hero {
+  background: linear-gradient(135deg, #1e1e1e, #2f2f2f);
+  color: white;
+  text-align: center;
+  padding: 7rem 2rem;
+}
+
+.hero-content h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero-content p {
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+.btn {
+  background-color: #1e1e1e;
+  color: #e6adc4;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+.btn:hover {
+  background-color: #e8f8f0;
+}
+
+/* Features Section */
+.features {
+  text-align: center;
+  padding: 4rem 2rem;
+  background-color: #1e1e1e;
+}
+
+.features h3 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #e6adc4;
+}
+
+.feature-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.feature {
+  background-color: #2f2f2f;
+  color: #fff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(255, 254, 254, 0.05);
+  width: 280px;
+  transition: transform 0.2s ease;
+}
+
+.feature:hover {
+  transform: translateY(-5px);
+}
+
+.feature h4 {
+  color: #e6adc4;
+  margin-bottom: 0.5rem;
+}
+
+/* About & Login Pages */
+.about,
+.login {
+  padding: 4rem 2rem;
+  text-align: center;
+  background-color: #1e1e1e;
+}
+
+.about, .login .container {
+  width: 90%;
+  max-width: 800px;
+  margin: auto;
+}
+
+.about h2,
+.login h2,
+.dashboard h2 {
+  color: #e6adc4;
+  margin-bottom: 1rem;
+}
+
+.about p,
+.login p,
+.dashboard p {
+  margin-bottom: 1.5rem;
+  font-size: 1.05rem;
+  color: #fff;
+}
+
+/* Login Card */
+.login-card {
+  background-color: #2f2f2f;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  padding: 2.5rem 2rem;
+  max-width: 600px;
+  margin: 2rem auto;
+}
+
+/* Input Rows inside login card */
+.input-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+
+.input-label {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #e6adc4;
+  text-align: right;
+}
+
+.text-input {
+  background-color: #2f2f2f;
+  width: 100%;
+  color: #fff;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #c7adb7;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.text-input:focus {
+  border-color: #df86aa;
+  box-shadow: 0 0 5px rgba(47, 47, 47, 0.5);
+}
+
+/* Align Sign In button to right inside card */
+.input-row:last-child > div:last-child {
+  justify-self: end;
+}
+
+/* Dashboard Card */
+.dashboard-card {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  padding: 2.5rem 2rem;
+  max-width: 600px;
+  margin: 2rem auto;
+  text-align: center;
+}
+
+.dashboard-card h2 {
+  color: #e6adc4;
+  margin-bottom: 1rem;
+}
+
+.dashboard-card h3 {
+  color: #e6adc4;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-card p {
+  color: #444;
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-card .login-btn {
+  margin-top: 1rem;
+}
+
+
+/* Footer */
+footer {
+  background-color: #e6adc4;
+  color: white;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+}

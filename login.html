@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | primordial</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="icon.png" type="image/png">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container">
+      <h1 class="logo">
+        <img src="icon.png" alt="primordial logo" class="logo-icon">
+        primordial</h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html" class="active">About</a></li>
+        <li><a href="login.html" class="login">Login</a></li>
+      </ul>
+    </div>
+  </nav>
+
+<!-- Login Section -->
+<section class="login">
+  <div class="container">
+    <div class="login-card">
+      <h2>Login</h2>
+      <div class="input-row">
+        <label for="username" class="input-label">Username:</label>
+        <input type="text" id="username" name="username" placeholder="Username/Email" class="text-input">
+      </div>
+
+      <div class="input-row">
+        <label for="password" class="input-label">Password:</label>
+        <input type="password" id="password" name="password" placeholder="Password" class="text-input">
+      </div>
+
+      <div class="input-row">
+        <div></div> <!-- empty column for label space -->
+        <div>
+          <button class="login-btn">Sign In</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+(async function () {
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const signInBtn = document.querySelector('.login-btn');
+
+  async function loadUsers() {
+    const res = await fetch('users.txt', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to load users.txt');
+    const text = await res.text();
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const users = {};
+    for (const line of lines) {
+      const sep = line.includes(':') ? ':' : line.includes(',') ? ',' : null;
+      if (!sep) continue;
+      const [u, ...rest] = line.split(sep);
+      users[u.trim()] = rest.join(sep).trim();
+    }
+    return users;
+  }
+
+  let users = null;
+  async function ensureUsers() {
+    if (users === null) users = await loadUsers();
+    return users;
+  }
+
+  signInBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const u = (usernameInput.value || '').trim();
+    const p = (passwordInput.value || '').trim();
+
+    if (!u || !p) {
+      alert('Please enter both username and password');
+      return;
+    }
+
+    try {
+      const list = await ensureUsers();
+      if (list[u] && list[u] === p) {
+        // Store login state and username
+        sessionStorage.setItem('loggedIn', 'true');
+        sessionStorage.setItem('currentUser', u);
+        window.location.href = 'dashboard.html';
+      } else {
+        alert('Invalid username or password');
+        passwordInput.value = ''; // clear password on fail
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      alert('Login failed. Check console for details.');
+    }
+  });
+})();
+</script>
+
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2025 primordial. All rights reserved.</p>
+  </footer>
+</body>
+</html>

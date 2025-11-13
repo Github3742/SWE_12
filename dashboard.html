@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | primordial</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="icon.png" type="image/png">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <h1 class="logo">
+        <img src="icon.png" alt="primordial logo" class="logo-icon">
+        primordial
+      </h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="login.html" class="login">Login</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Dashboard Content -->
+  <section class="dashboard">
+    <div id="dashboard-container"></div>
+  </section>
+
+  <script>
+    // Dashboard Class
+    class Dashboard {
+      constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        this.user = sessionStorage.getItem('currentUser') || 'User';
+        this.loggedIn = sessionStorage.getItem('loggedIn') === 'true';
+        this.balance = 55983004328; // Example
+      }
+
+      init() {
+        if (!this.loggedIn) {
+          this.showAccessDenied();
+        } else {
+          this.render();
+        }
+      }
+
+      render() {
+        // Clear container
+        this.container.innerHTML = '';
+
+        // Create card
+        const card = document.createElement('div');
+        card.className = 'dashboard-card';
+
+        // Welcome
+        const welcome = document.createElement('h2');
+        welcome.textContent = `Welcome, ${this.user}!`;
+        card.appendChild(welcome);
+
+        // Balance
+        const balanceLabel = document.createElement('p');
+        balanceLabel.textContent = 'Your current balance is:';
+        card.appendChild(balanceLabel);
+
+        const balanceAmount = document.createElement('h3');
+        balanceAmount.textContent = `$${this.balance.toLocaleString()}`;
+        card.appendChild(balanceAmount);
+
+        // Logout button
+        const logoutBtn = document.createElement('button');
+        logoutBtn.className = 'login-btn';
+        logoutBtn.textContent = 'Log Out';
+        logoutBtn.addEventListener('click', () => this.logout());
+        card.appendChild(logoutBtn);
+
+        this.container.appendChild(card);
+      }
+
+      logout() {
+        sessionStorage.removeItem('loggedIn');
+        sessionStorage.removeItem('currentUser');
+        location.href = 'login.html';
+      }
+
+      showAccessDenied() {
+        this.container.innerHTML = `
+          <div style="text-align:center; margin-top:100px;">
+            <h1 style="color:#d00;">Access Denied</h1>
+            <p>You must <a href="login.html">log in</a> to view this page.</p>
+          </div>
+        `;
+        setTimeout(() => location.href = 'login.html', 3000);
+      }
+    }
+
+    // Initialize Dashboard
+    const myDashboard = new Dashboard('dashboard-container');
+    myDashboard.init();
+  </script>
+</body>
+</html>
