@@ -28,76 +28,974 @@
     <div id="dashboard-container"></div>
   </section>
 
-  <script>
-    // Dashboard Class
-    class Dashboard {
-      constructor(containerId) {
-        this.container = document.getElementById(containerId);
-        this.user = sessionStorage.getItem('currentUser') || 'User';
-        this.loggedIn = sessionStorage.getItem('loggedIn') === 'true';
-        this.balance = 55983004328; // Example
-      }
+  
+<script>
+  const currencyFormatter = new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 
-      init() {
-        if (!this.loggedIn) {
-          this.showAccessDenied();
-        } else {
-          this.render();
+  const formatCurrency = value => {
+    const absolute = Math.abs(value);
+    const formatted = currencyFormatter.format(absolute);
+    const sign = value < 0 ? '-' : '';
+    return `${sign}$${formatted}`;
+  };
+
+  const formatPercent = value => {
+    const sign = value >= 0 ? '+' : '';
+    return `${sign}${(value * 100).toFixed(1)}%`;
+  };
+
+  const parseNumber = value => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  };
+
+  const createElement = (tag, options = {}) => {
+    const element = document.createElement(tag);
+
+    if (options.className) {
+      element.className = options.className;
+    }
+
+    if (options.text !== undefined) {
+      element.textContent = options.text;
+    }
+
+    if (options.html !== undefined) {
+      element.innerHTML = options.html;
+    }
+
+    if (options.attrs) {
+      Object.entries(options.attrs).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          element.setAttribute(key, value);
         }
+      });
+    }
+
+    if (options.dataset) {
+      Object.entries(options.dataset).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          element.dataset[key] = value;
+        }
+      });
+    }
+
+    if (options.children) {
+      options.children.forEach(child => {
+        if (child) {
+          element.appendChild(child);
+        }
+      });
+    }
+
+    return element;
+  };
+
+  class Account {
+    constructor(name, type, balance) {
+      this.name = name;
+      this.type = type;
+      this.balance = balance;
+    }
+
+    formattedBalance() {
+      return formatCurrency(this.balance);
+    }
+  }
+
+  class BudgetCategory {
+    constructor(name, limit, spent) {
+      this.name = name;
+      this.limit = limit;
+      this.spent = spent;
+    }
+
+    percentUsed() {
+      if (this.limit === 0) {
+        return 0;
+      }
+      return Math.min(100, Math.round((this.spent / this.limit) * 100));
+    }
+
+    status() {
+      if (this.limit === 0) {
+        return this.spent > 0 ? 'over' : 'good';
+      }
+      if (this.spent > this.limit) {
+        return 'over';
+      }
+      if (this.spent / this.limit >= 0.85) {
+        return 'warning';
+      }
+      return 'good';
+    }
+
+    remaining() {
+      return this.limit - this.spent;
+    }
+  }
+
+  class Investment {
+    constructor(name, value, change) {
+      this.name = name;
+      this.value = value;
+      this.change = change;
+    }
+
+    formattedValue() {
+      return formatCurrency(this.value);
+    }
+
+    changeLabel() {
+      return formatPercent(this.change);
+    }
+  }
+
+  class Goal {
+    constructor(name, target, current) {
+      this.name = name;
+      this.target = target;
+      this.current = current;
+    }
+
+    progress() {
+      if (this.target === 0) {
+        return 0;
+      }
+      return Math.min(100, Math.round((this.current / this.target) * 100));
+    }
+
+    status() {
+      if (this.current >= this.target) {
+        return 'complete';
+      }
+      if (this.progress() >= 75) {
+        return 'warning';
+      }
+      return 'active';
+    }
+  }
+
+  class Dashboard {
+    constructor(containerId) {
+      this.container = document.getElementById(containerId);
+      this.user = sessionStorage.getItem('currentUser') || 'User';
+      this.loggedIn = sessionStorage.getItem('loggedIn') === 'true';
+
+      this.data = {
+        accounts: [
+          new Account('Checking', 'Daily Spending', 4210.52),
+          new Account('Savings', 'Emergency Fund', 12250.0),
+          new Account('Brokerage', 'Investments', 18990.87),
+          new Account('Credit Card', 'Revolving Credit', -870.14)
+        ],
+        budgets: [
+          new BudgetCategory('Housing', 1400, 1325),
+          new BudgetCategory('Groceries', 650, 488),
+          new BudgetCategory('Transportation', 250, 210),
+          new BudgetCategory('Dining Out', 200, 198),
+          new BudgetCategory('Investing', 800, 880)
+        ],
+        investments: [
+          new Investment('Index Fund', 12500, 0.042),
+          new Investment('High-Yield Savings', 5200, 0.018),
+          new Investment('Crypto Basket', 1290, -0.065)
+        ],
+        goals: [
+          new Goal('Build emergency fund', 15000, 6200),
+          new Goal('Invest for retirement', 250000, 84500)
+        ]
+      };
+
+      this.editing = {
+        accounts: null,
+        budgets: null,
+        investments: null,
+        goals: null
+      };
+
+      this.formConfigs = this.createFormConfigs();
+    }
+
+    get accounts() {
+      return this.data.accounts;
+    }
+
+    set accounts(list) {
+      this.data.accounts = list;
+    }
+
+    get budgets() {
+      return this.data.budgets;
+    }
+
+    set budgets(list) {
+      this.data.budgets = list;
+    }
+
+    get investments() {
+      return this.data.investments;
+    }
+
+    set investments(list) {
+      this.data.investments = list;
+    }
+
+    get goals() {
+      return this.data.goals;
+    }
+
+    set goals(list) {
+      this.data.goals = list;
+    }
+
+    init() {
+      if (!this.loggedIn) {
+        this.showAccessDenied();
+        return;
       }
 
-      render() {
-        // Clear container
-        this.container.innerHTML = '';
+      this.render();
+    }
 
-        // Create card
-        const card = document.createElement('div');
-        card.className = 'dashboard-card';
+    createFormConfigs() {
+      return {
+        accounts: {
+          createTitle: 'Add Account',
+          editTitle: 'Update Account',
+          submitLabel: 'Add Account',
+          editSubmitLabel: 'Save Changes',
+          fields: [
+            { name: 'name', label: 'Name', type: 'text', required: true },
+            { name: 'type', label: 'Type', type: 'text', placeholder: 'e.g. Savings', required: true },
+            { name: 'balance', label: 'Balance', type: 'number', step: '0.01', required: true }
+          ],
+          getInitialValues: account => account ? {
+            name: account.name,
+            type: account.type,
+            balance: account.balance
+          } : {},
+          createItem: formData => {
+            const name = formData.get('name').trim();
+            const type = formData.get('type').trim();
+            const balance = parseNumber(formData.get('balance'));
 
-        // Welcome
-        const welcome = document.createElement('h2');
-        welcome.textContent = `Welcome, ${this.user}!`;
-        card.appendChild(welcome);
+            if (!name || !type || Number.isNaN(balance)) {
+              alert('Please provide a name, account type, and balance.');
+              return null;
+            }
 
-        // Balance
-        const balanceLabel = document.createElement('p');
-        balanceLabel.textContent = 'Your current balance is:';
-        card.appendChild(balanceLabel);
+            return new Account(name, type, balance);
+          }
+        },
+        budgets: {
+          createTitle: 'Add Budget Category',
+          editTitle: 'Update Budget Category',
+          submitLabel: 'Add Category',
+          editSubmitLabel: 'Save Changes',
+          fields: [
+            { name: 'name', label: 'Name', type: 'text', required: true },
+            { name: 'limit', label: 'Limit', type: 'number', step: '0.01', min: '0', required: true },
+            { name: 'spent', label: 'Spent', type: 'number', step: '0.01', min: '0', required: true }
+          ],
+          getInitialValues: category => category ? {
+            name: category.name,
+            limit: category.limit,
+            spent: category.spent
+          } : {},
+          createItem: formData => {
+            const name = formData.get('name').trim();
+            const limit = parseNumber(formData.get('limit'));
+            const spent = parseNumber(formData.get('spent'));
 
-        const balanceAmount = document.createElement('h3');
-        balanceAmount.textContent = `$${this.balance.toLocaleString()}`;
-        card.appendChild(balanceAmount);
+            if (!name || Number.isNaN(limit) || Number.isNaN(spent)) {
+              alert('Enter a name, limit, and spent amount for the category.');
+              return null;
+            }
 
-        // Logout button
-        const logoutBtn = document.createElement('button');
-        logoutBtn.className = 'login-btn';
-        logoutBtn.textContent = 'Log Out';
-        logoutBtn.addEventListener('click', () => this.logout());
-        card.appendChild(logoutBtn);
+            if (limit < 0 || spent < 0) {
+              alert('Budget amounts cannot be negative.');
+              return null;
+            }
 
-        this.container.appendChild(card);
-      }
+            return new BudgetCategory(name, limit, spent);
+          }
+        },
+        investments: {
+          createTitle: 'Add Investment',
+          editTitle: 'Update Investment',
+          submitLabel: 'Add Investment',
+          editSubmitLabel: 'Save Changes',
+          fields: [
+            { name: 'name', label: 'Name', type: 'text', required: true },
+            { name: 'value', label: 'Value', type: 'number', step: '0.01', min: '0', required: true },
+            { name: 'change', label: 'Change %', type: 'number', step: '0.01', required: true }
+          ],
+          getInitialValues: investment => investment ? {
+            name: investment.name,
+            value: investment.value,
+            change: (investment.change * 100).toFixed(2)
+          } : {},
+          createItem: formData => {
+            const name = formData.get('name').trim();
+            const value = parseNumber(formData.get('value'));
+            const change = parseNumber(formData.get('change'));
 
-      logout() {
-        sessionStorage.removeItem('loggedIn');
-        sessionStorage.removeItem('currentUser');
-        location.href = 'login.html';
-      }
+            if (!name || Number.isNaN(value) || Number.isNaN(change)) {
+              alert('Enter a name, current value, and performance change.');
+              return null;
+            }
 
-      showAccessDenied() {
-        this.container.innerHTML = `
-          <div style="text-align:center; margin-top:100px;">
-            <h1 style="color:#d00;">Access Denied</h1>
-            <p>You must <a href="login.html">log in</a> to view this page.</p>
+            return new Investment(name, value, change / 100);
+          }
+        },
+        goals: {
+          createTitle: 'Add Goal',
+          editTitle: 'Update Goal',
+          submitLabel: 'Add Goal',
+          editSubmitLabel: 'Save Changes',
+          fields: [
+            { name: 'name', label: 'Goal Name', type: 'text', required: true },
+            { name: 'target', label: 'Target Amount', type: 'number', step: '0.01', min: '0', required: true },
+            { name: 'current', label: 'Current Saved', type: 'number', step: '0.01', min: '0', required: true }
+          ],
+          getInitialValues: goal => goal ? {
+            name: goal.name,
+            target: goal.target,
+            current: goal.current
+          } : {},
+          createItem: formData => {
+            const name = formData.get('name').trim();
+            const target = parseNumber(formData.get('target'));
+            const current = parseNumber(formData.get('current'));
+
+            if (!name || Number.isNaN(target) || Number.isNaN(current)) {
+              alert('Provide a goal name, target, and current progress.');
+              return null;
+            }
+
+            if (target < 0 || current < 0) {
+              alert('Goal amounts cannot be negative.');
+              return null;
+            }
+
+            return new Goal(name, target, current);
+          }
+        }
+      };
+    }
+
+    render() {
+      this.container.innerHTML = '';
+
+      const header = createElement('div', { className: 'dashboard-header', html: `
+        <h2>Welcome back, ${this.user}!</h2>
+        <p>Your personal command center for budgeting, banking, and investing.</p>
+      ` });
+      this.container.appendChild(header);
+
+      const grid = createElement('div', { className: 'dashboard-grid' });
+      this.container.appendChild(grid);
+
+      [
+        this.renderSummaryCard(),
+        this.renderAccountsCard(),
+        this.renderBudgetCard(),
+        this.renderInvestmentsCard(),
+        this.renderInsightsCard(),
+        this.renderGoalsCard(),
+        this.renderActionsCard(),
+        this.renderDataCard()
+      ].forEach(card => grid.appendChild(card));
+    }
+
+    logout() {
+      sessionStorage.removeItem('loggedIn');
+      sessionStorage.removeItem('currentUser');
+      location.href = 'login.html';
+    }
+
+    totalCash() {
+      return this.accounts
+        .filter(account => account.balance >= 0)
+        .reduce((total, account) => total + account.balance, 0);
+    }
+
+    totalDebt() {
+      return this.accounts
+        .filter(account => account.balance < 0)
+        .reduce((total, account) => total + account.balance, 0);
+    }
+
+    totalInvestments() {
+      return this.investments.reduce((total, investment) => total + investment.value, 0);
+    }
+
+    renderSummaryCard() {
+      const card = this.createCard('Financial Snapshot');
+      const cash = this.totalCash();
+      const debt = this.totalDebt();
+      const investments = this.totalInvestments();
+      const netWorth = cash + investments + debt;
+
+      const snapshotItems = [
+        { label: 'Total Cash', value: formatCurrency(cash) },
+        { label: 'Investments', value: formatCurrency(investments) },
+        { label: 'Debt', value: formatCurrency(debt), valueClass: 'debt' },
+        { label: 'Net Worth', value: formatCurrency(netWorth), valueClass: 'highlight' }
+      ];
+
+      const grid = createElement('div', { className: 'snapshot-grid' });
+      snapshotItems.forEach(item => {
+        const wrapper = createElement('div');
+        wrapper.appendChild(createElement('p', { className: 'label', text: item.label }));
+        wrapper.appendChild(createElement('p', {
+          className: ['value', item.valueClass].filter(Boolean).join(' '),
+          text: item.value
+        }));
+        grid.appendChild(wrapper);
+      });
+
+      card.appendChild(grid);
+      return card;
+    }
+
+    renderAccountsCard() {
+      const card = this.createCard('Bank & Cash Accounts');
+      const list = createElement('ul', { className: 'account-list' });
+
+      this.accounts.forEach((account, index) => {
+        const item = createElement('li');
+        item.innerHTML = `
+          <div>
+            <p class="account-name">${account.name}</p>
+            <span class="account-type">${account.type}</span>
+          </div>
+          <div class="account-controls">
+            <p class="account-balance ${account.balance < 0 ? 'negative' : ''}">${account.formattedBalance()}</p>
+            <div class="control-buttons">
+              <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${account.name}">✏️</button>
+              <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${account.name}">🗑️</button>
+            </div>
           </div>
         `;
-        setTimeout(() => location.href = 'login.html', 3000);
+        list.appendChild(item);
+      });
+
+      this.bindEntityActions(list, 'accounts', account => `Remove the ${account.name} account?`);
+      card.appendChild(list);
+      card.appendChild(this.buildEntityForm('accounts'));
+      return card;
+    }
+
+    renderBudgetCard() {
+      const card = this.createCard('Budget Overview');
+
+      this.budgets.forEach((category, index) => {
+        const status = category.status();
+        let statusLabel = 'On Track';
+        if (status === 'warning') {
+          statusLabel = 'Close to Limit';
+        } else if (status === 'over') {
+          statusLabel = 'Over Budget';
+        }
+
+        const row = createElement('div', { className: 'budget-row', html: `
+          <div class="budget-header">
+            <div>
+              <p class="budget-name">${category.name}</p>
+              <p class="budget-detail">Spent ${formatCurrency(category.spent)} of ${formatCurrency(category.limit)}</p>
+            </div>
+            <span class="status-pill ${status}">${statusLabel}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress ${status}" style="width: ${category.percentUsed()}%"></div>
+          </div>
+          <div class="budget-footer">
+            <p class="budget-remaining">${category.remaining() >= 0 ? 'Remaining' : 'Over by'} ${formatCurrency(Math.abs(category.remaining()))}</p>
+            <div class="control-buttons">
+              <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${category.name} budget">✏️</button>
+              <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${category.name} budget">🗑️</button>
+            </div>
+          </div>
+        ` });
+
+        card.appendChild(row);
+      });
+
+      this.bindEntityActions(card, 'budgets', category => `Delete the ${category.name} category?`);
+      card.appendChild(this.buildEntityForm('budgets'));
+      return card;
+    }
+
+    renderInvestmentsCard() {
+      const card = this.createCard('Investments Performance');
+      const list = createElement('ul', { className: 'investment-list' });
+
+      this.investments.forEach((investment, index) => {
+        const item = createElement('li');
+        item.innerHTML = `
+          <div>
+            <p class="investment-name">${investment.name}</p>
+            <p class="investment-value">${investment.formattedValue()}</p>
+          </div>
+          <div class="investment-controls">
+            <span class="change ${investment.change >= 0 ? 'positive' : 'negative'}">${investment.changeLabel()}</span>
+            <div class="control-buttons">
+              <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${investment.name} investment">✏️</button>
+              <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${investment.name} investment">🗑️</button>
+            </div>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+
+      this.bindEntityActions(list, 'investments', investment => `Remove ${investment.name} from your portfolio?`);
+      card.appendChild(list);
+      card.appendChild(this.buildEntityForm('investments'));
+      return card;
+    }
+
+    renderInsightsCard() {
+      const card = this.createCard('Spending Insights');
+      const insights = [];
+
+      this.budgets.forEach(category => {
+        if (category.status() === 'over') {
+          insights.push(`You have exceeded your ${category.name.toLowerCase()} budget. Consider adjusting next month.`);
+        } else if (category.status() === 'warning') {
+          insights.push(`Almost at the limit for ${category.name}. ${formatCurrency(category.remaining())} left to spend.`);
+        }
+      });
+
+      if (insights.length === 0) {
+        insights.push('All budgets are healthy. Keep up the great work!');
+      }
+
+      if (this.totalDebt() < 0) {
+        insights.push('Your revolving credit balance is growing. Plan a payment to avoid interest.');
+      }
+
+      const list = createElement('ul', { className: 'insights-list' });
+      insights.forEach(text => list.appendChild(createElement('li', { text })));
+      card.appendChild(list);
+      return card;
+    }
+
+    renderGoalsCard() {
+      const card = this.createCard('Financial Goals');
+
+      if (this.goals.length === 0) {
+        card.appendChild(createElement('p', {
+          className: 'empty-state',
+          text: 'Create a savings or investing goal to track your progress.'
+        }));
+      } else {
+        const list = createElement('ul', { className: 'goal-list' });
+
+        this.goals.forEach((goal, index) => {
+          const status = goal.status();
+          let statusLabel = 'Active';
+          if (status === 'warning') {
+            statusLabel = 'Almost There';
+          } else if (status === 'complete') {
+            statusLabel = 'Complete';
+          }
+
+          const item = createElement('li', { html: `
+            <div class="goal-header">
+              <div>
+                <p class="goal-name">${goal.name}</p>
+                <p class="goal-detail">${formatCurrency(goal.current)} saved of ${formatCurrency(goal.target)}</p>
+              </div>
+              <span class="status-pill ${status}">${statusLabel}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress ${status}" style="width: ${goal.progress()}%"></div>
+            </div>
+            <div class="goal-footer">
+              <p class="goal-progress">${goal.progress()}% to goal</p>
+              <div class="control-buttons">
+                <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${goal.name} goal">✏️</button>
+                <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${goal.name} goal">🗑️</button>
+              </div>
+            </div>
+          ` });
+          list.appendChild(item);
+        });
+
+        this.bindEntityActions(list, 'goals', goal => `Delete the ${goal.name} goal?`);
+        card.appendChild(list);
+      }
+
+      card.appendChild(this.buildEntityForm('goals'));
+      return card;
+    }
+
+    renderActionsCard() {
+      const card = this.createCard('Quick Actions');
+      const actions = createElement('div', { className: 'quick-actions' });
+
+      const planButton = createElement('button', { className: 'btn outline', text: 'Plan Next Month Budget' });
+      planButton.addEventListener('click', () => {
+        if (this.budgets.length === 0) {
+          alert('Add a budget category to plan ahead.');
+          return;
+        }
+        const highest = this.budgets.reduce((prev, current) => (current.spent > prev.spent ? current : prev), this.budgets[0]);
+        alert(`Focus on ${highest.name} next month. It has the highest spending at ${formatCurrency(highest.spent)}.`);
+      });
+
+      const investButton = createElement('button', { className: 'btn outline', text: 'Rebalance Portfolio' });
+      investButton.addEventListener('click', () => {
+        if (this.investments.length === 0) {
+          alert('Add an investment to begin tracking performance.');
+          return;
+        }
+        const underperformer = this.investments.find(item => item.change < 0);
+        if (underperformer) {
+          alert(`Consider reviewing your ${underperformer.name} position. It is down ${underperformer.changeLabel()}.`);
+        } else {
+          alert('All investments are performing well. You can schedule a periodic rebalance.');
+        }
+      });
+
+      const logoutBtn = createElement('button', { className: 'login-btn', text: 'Log Out' });
+      logoutBtn.addEventListener('click', () => this.logout());
+
+      actions.append(planButton, investButton, logoutBtn);
+      card.appendChild(actions);
+      return card;
+    }
+
+    renderDataCard() {
+      const card = this.createCard('Data & Personalization');
+      card.classList.add('data-panel');
+
+      card.appendChild(createElement('p', {
+        className: 'data-description',
+        text: 'Keep your finances portable. Import an existing plan, rename your profile, or save everything as a JSON file to continue later.'
+      }));
+
+      const nameForm = createElement('form', { className: 'entity-form' });
+      nameForm.appendChild(createElement('h4', { text: 'Profile Settings' }));
+      const nameGrid = createElement('div', { className: 'form-grid' });
+      const nameLabel = createElement('label');
+      nameLabel.appendChild(createElement('span', { className: 'form-label-text', text: 'Display Name' }));
+      const nameInput = createElement('input', { attrs: { type: 'text', name: 'displayName', value: this.user } });
+      nameLabel.appendChild(nameInput);
+      nameGrid.appendChild(nameLabel);
+      nameForm.appendChild(nameGrid);
+      const nameActions = createElement('div', { className: 'form-actions' });
+      nameActions.appendChild(createElement('button', { className: 'btn primary', attrs: { type: 'submit' }, text: 'Save Name' }));
+      nameForm.appendChild(nameActions);
+
+      nameForm.addEventListener('submit', event => {
+        event.preventDefault();
+        const displayName = nameInput.value.trim();
+        if (!displayName) {
+          alert('Please enter a display name.');
+          return;
+        }
+        this.user = displayName;
+        sessionStorage.setItem('currentUser', this.user);
+        this.render();
+      });
+
+      card.appendChild(nameForm);
+
+      const controls = createElement('div', { className: 'data-controls' });
+      const exportBtn = createElement('button', { className: 'btn outline', text: 'Export Profile JSON' });
+      exportBtn.addEventListener('click', () => this.exportData());
+
+      const importLabel = createElement('label', { className: 'file-upload', text: 'Import Profile JSON' });
+      const fileInput = createElement('input', { attrs: { type: 'file', accept: 'application/json' } });
+      fileInput.addEventListener('change', event => {
+        this.importData(event.target.files[0]);
+        event.target.value = '';
+      });
+      importLabel.appendChild(fileInput);
+
+      controls.append(exportBtn, importLabel);
+      card.appendChild(controls);
+      return card;
+    }
+
+    buildEntityForm(entity) {
+      const config = this.formConfigs[entity];
+      const editingIndex = this.editingIndex(entity);
+      const item = editingIndex !== null ? this.data[entity][editingIndex] : null;
+      const values = config.getInitialValues(item);
+
+      const form = createElement('form', { className: 'entity-form' });
+      form.appendChild(createElement('h4', { text: editingIndex !== null ? config.editTitle : config.createTitle }));
+
+      const grid = createElement('div', { className: 'form-grid' });
+      config.fields.forEach(field => {
+        const label = createElement('label');
+        label.appendChild(createElement('span', { className: 'form-label-text', text: field.label }));
+        const input = createElement('input', { attrs: { type: field.type || 'text', name: field.name } });
+
+        if (field.placeholder) {
+          input.placeholder = field.placeholder;
+        }
+        if (field.step) {
+          input.step = field.step;
+        }
+        if (field.min !== undefined) {
+          input.min = field.min;
+        }
+        if (field.max !== undefined) {
+          input.max = field.max;
+        }
+        if (field.required) {
+          input.required = true;
+        }
+        if (values && values[field.name] !== undefined && values[field.name] !== null) {
+          input.value = values[field.name];
+        }
+
+        label.appendChild(input);
+        grid.appendChild(label);
+      });
+
+      form.appendChild(grid);
+      form.appendChild(createElement('input', {
+        attrs: {
+          type: 'hidden',
+          name: 'index',
+          value: editingIndex !== null ? editingIndex : ''
+        }
+      }));
+
+      const actions = createElement('div', { className: 'form-actions' });
+      actions.appendChild(createElement('button', {
+        className: 'btn primary',
+        attrs: { type: 'submit' },
+        text: editingIndex !== null ? config.editSubmitLabel : config.submitLabel
+      }));
+      const clearButton = createElement('button', { className: 'btn text', attrs: { type: 'button' }, text: 'Clear' });
+      actions.appendChild(clearButton);
+      form.appendChild(actions);
+
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const rawIndex = formData.get('index');
+        const index = rawIndex !== '' ? Number.parseInt(rawIndex, 10) : null;
+        const itemInstance = config.createItem(formData, index);
+        if (!itemInstance) {
+          return;
+        }
+        this.updateEntityList(entity, itemInstance, index);
+        this.setEditing(entity, null);
+        this.render();
+      });
+
+      clearButton.addEventListener('click', () => {
+        this.setEditing(entity, null);
+        this.render();
+      });
+
+      return form;
+    }
+
+    bindEntityActions(container, entity, confirmMessage) {
+      container.addEventListener('click', event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) {
+          return;
+        }
+
+        const index = Number.parseInt(button.dataset.index, 10);
+        if (Number.isNaN(index)) {
+          return;
+        }
+
+        if (button.dataset.action === 'edit') {
+          this.setEditing(entity, index);
+          this.render();
+          return;
+        }
+
+        if (button.dataset.action === 'delete') {
+          const item = this.data[entity][index];
+          if (!item) {
+            return;
+          }
+          const message = typeof confirmMessage === 'function' ? confirmMessage(item) : confirmMessage;
+          if (!message || confirm(message)) {
+            this.removeEntity(entity, index);
+            this.setEditing(entity, null);
+            this.render();
+          }
+        }
+      });
+    }
+
+    editingIndex(entity) {
+      const index = this.editing[entity];
+      return Number.isInteger(index) ? index : null;
+    }
+
+    setEditing(entity, index) {
+      this.editing[entity] = Number.isInteger(index) ? index : null;
+    }
+
+    updateEntityList(entity, item, index) {
+      const list = this.data[entity];
+      if (!Array.isArray(list) || !item) {
+        return;
+      }
+
+      if (Number.isInteger(index) && list[index]) {
+        list[index] = item;
+      } else {
+        list.push(item);
       }
     }
 
-    // Initialize Dashboard
-    const myDashboard = new Dashboard('dashboard-container');
-    myDashboard.init();
-  </script>
+    removeEntity(entity, index) {
+      const list = this.data[entity];
+      if (!Array.isArray(list) || !list[index]) {
+        return;
+      }
+      list.splice(index, 1);
+    }
+
+    exportData() {
+      const payload = {
+        user: this.user,
+        generatedAt: new Date().toISOString(),
+        accounts: this.accounts.map(account => ({
+          name: account.name,
+          type: account.type,
+          balance: account.balance
+        })),
+        budgets: this.budgets.map(category => ({
+          name: category.name,
+          limit: category.limit,
+          spent: category.spent
+        })),
+        investments: this.investments.map(investment => ({
+          name: investment.name,
+          value: investment.value,
+          change: investment.change
+        })),
+        goals: this.goals.map(goal => ({
+          name: goal.name,
+          target: goal.target,
+          current: goal.current
+        }))
+      };
+
+      const filenameUser = (this.user || 'profile')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'profile';
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${filenameUser}-financial-data.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    importData(file) {
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          this.applyImportedData(data);
+          alert('Profile imported successfully. Your dashboard has been updated.');
+        } catch (error) {
+          console.error('Import failed:', error);
+          alert('Unable to import that file. Please ensure it is a valid JSON export.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    applyImportedData(data) {
+      if (data.user) {
+        this.user = data.user;
+        sessionStorage.setItem('currentUser', this.user);
+      }
+
+      if (Array.isArray(data.accounts)) {
+        this.accounts = data.accounts
+          .filter(item => item && typeof item.name === 'string')
+          .map(item => new Account(item.name, item.type || 'Account', parseNumber(item.balance) || 0));
+      }
+
+      if (Array.isArray(data.budgets)) {
+        this.budgets = data.budgets
+          .filter(item => item && typeof item.name === 'string')
+          .map(item => new BudgetCategory(
+            item.name,
+            parseNumber(item.limit) || 0,
+            parseNumber(item.spent) || 0
+          ));
+      }
+
+      if (Array.isArray(data.investments)) {
+        this.investments = data.investments
+          .filter(item => item && typeof item.name === 'string')
+          .map(item => new Investment(
+            item.name,
+            parseNumber(item.value) || 0,
+            parseNumber(item.change) || 0
+          ));
+      }
+
+      if (Array.isArray(data.goals)) {
+        this.goals = data.goals
+          .filter(item => item && typeof item.name === 'string')
+          .map(item => new Goal(
+            item.name,
+            parseNumber(item.target) || 0,
+            parseNumber(item.current) || 0
+          ));
+      }
+
+      Object.keys(this.editing).forEach(key => {
+        this.editing[key] = null;
+      });
+
+      this.render();
+    }
+
+    createCard(title) {
+      const card = createElement('div', { className: 'dashboard-panel' });
+      card.appendChild(createElement('h3', { text: title }));
+      return card;
+    }
+
+    showAccessDenied() {
+      this.container.innerHTML = `
+        <div style="text-align:center; margin-top:100px;">
+          <h1 style="color:#d00;">Access Denied</h1>
+          <p>You must <a href="login.html">log in</a> to view this page.</p>
+        </div>
+      `;
+      setTimeout(() => (location.href = 'login.html'), 3000);
+    }
+  }
+
+  const dashboard = new Dashboard('dashboard-container');
+  dashboard.init();
+</script>
+
 </body>
 </html>
