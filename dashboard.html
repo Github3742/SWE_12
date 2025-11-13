@@ -29,13 +29,125 @@
   </section>
 
   <script>
-    // Dashboard Class
+    class Account {
+      constructor(name, type, balance) {
+        this.name = name;
+        this.type = type;
+        this.balance = balance;
+      }
+
+      formattedBalance() {
+        const prefix = this.balance < 0 ? '-$' : '$';
+        return `${prefix}${Math.abs(this.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+    }
+
+    class BudgetCategory {
+      constructor(name, limit, spent) {
+        this.name = name;
+        this.limit = limit;
+        this.spent = spent;
+      }
+
+      percentUsed() {
+        if (this.limit === 0) {
+          return 0;
+        }
+        return Math.min(100, Math.round((this.spent / this.limit) * 100));
+      }
+
+      status() {
+        if (this.limit === 0) {
+          return this.spent > 0 ? 'over' : 'good';
+        }
+        if (this.spent > this.limit) {
+          return 'over';
+        }
+        if (this.spent / this.limit >= 0.85) {
+          return 'warning';
+        }
+        return 'good';
+      }
+
+      remaining() {
+        return this.limit - this.spent;
+      }
+    }
+
+    class Investment {
+      constructor(name, value, change) {
+        this.name = name;
+        this.value = value;
+        this.change = change;
+      }
+
+      formattedValue() {
+        return `$${this.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+
+      changeLabel() {
+        const prefix = this.change >= 0 ? '+' : '';
+        return `${prefix}${(this.change * 100).toFixed(1)}%`;
+      }
+    }
+
+    class Goal {
+      constructor(name, target, current) {
+        this.name = name;
+        this.target = target;
+        this.current = current;
+      }
+
+      progress() {
+        if (this.target === 0) {
+          return 0;
+        }
+        return Math.min(100, Math.round((this.current / this.target) * 100));
+      }
+
+      status() {
+        if (this.current >= this.target) {
+          return 'complete';
+        }
+        if (this.progress() >= 75) {
+          return 'warning';
+        }
+        return 'active';
+      }
+    }
+
     class Dashboard {
       constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.user = sessionStorage.getItem('currentUser') || 'User';
         this.loggedIn = sessionStorage.getItem('loggedIn') === 'true';
-        this.balance = 55983004328; // Example
+        this.accounts = [
+          new Account('Checking', 'Daily Spending', 4210.52),
+          new Account('Savings', 'Emergency Fund', 12250.0),
+          new Account('Brokerage', 'Investments', 18990.87),
+          new Account('Credit Card', 'Revolving Credit', -870.14)
+        ];
+        this.budgets = [
+          new BudgetCategory('Housing', 1400, 1325),
+          new BudgetCategory('Groceries', 650, 488),
+          new BudgetCategory('Transportation', 250, 210),
+          new BudgetCategory('Dining Out', 200, 198),
+          new BudgetCategory('Investing', 800, 880)
+        ];
+        this.investments = [
+          new Investment('Index Fund', 12500, 0.042),
+          new Investment('High-Yield Savings', 5200, 0.018),
+          new Investment('Crypto Basket', 1290, -0.065)
+        ];
+        this.goals = [
+          new Goal('Build emergency fund', 15000, 6200),
+          new Goal('Invest for retirement', 250000, 84500)
+        ];
+
+        this.editingAccountIndex = null;
+        this.editingBudgetIndex = null;
+        this.editingInvestmentIndex = null;
+        this.editingGoalIndex = null;
       }
 
       init() {
@@ -47,41 +159,791 @@
       }
 
       render() {
-        // Clear container
         this.container.innerHTML = '';
 
-        // Create card
-        const card = document.createElement('div');
-        card.className = 'dashboard-card';
+        const header = document.createElement('div');
+        header.className = 'dashboard-header';
+        header.innerHTML = `
+          <h2>Welcome back, ${this.user}!</h2>
+          <p>Your personal command center for budgeting, banking, and investing.</p>
+        `;
+        this.container.appendChild(header);
 
-        // Welcome
-        const welcome = document.createElement('h2');
-        welcome.textContent = `Welcome, ${this.user}!`;
-        card.appendChild(welcome);
+        const grid = document.createElement('div');
+        grid.className = 'dashboard-grid';
+        this.container.appendChild(grid);
 
-        // Balance
-        const balanceLabel = document.createElement('p');
-        balanceLabel.textContent = 'Your current balance is:';
-        card.appendChild(balanceLabel);
-
-        const balanceAmount = document.createElement('h3');
-        balanceAmount.textContent = `$${this.balance.toLocaleString()}`;
-        card.appendChild(balanceAmount);
-
-        // Logout button
-        const logoutBtn = document.createElement('button');
-        logoutBtn.className = 'login-btn';
-        logoutBtn.textContent = 'Log Out';
-        logoutBtn.addEventListener('click', () => this.logout());
-        card.appendChild(logoutBtn);
-
-        this.container.appendChild(card);
+        grid.appendChild(this.renderSummaryCard());
+        grid.appendChild(this.renderAccountsCard());
+        grid.appendChild(this.renderBudgetCard());
+        grid.appendChild(this.renderInvestmentsCard());
+        grid.appendChild(this.renderInsightsCard());
+        grid.appendChild(this.renderGoalsCard());
+        grid.appendChild(this.renderActionsCard());
+        grid.appendChild(this.renderDataCard());
       }
 
       logout() {
         sessionStorage.removeItem('loggedIn');
         sessionStorage.removeItem('currentUser');
         location.href = 'login.html';
+      }
+
+      totalCash() {
+        return this.accounts
+          .filter(account => account.balance >= 0)
+          .reduce((total, account) => total + account.balance, 0);
+      }
+
+      totalDebt() {
+        return this.accounts
+          .filter(account => account.balance < 0)
+          .reduce((total, account) => total + account.balance, 0);
+      }
+
+      totalInvestments() {
+        return this.investments.reduce((total, investment) => total + investment.value, 0);
+      }
+
+      renderSummaryCard() {
+        const card = this.createCard('Financial Snapshot');
+        const cash = this.totalCash();
+        const debt = this.totalDebt();
+        const investments = this.totalInvestments();
+        const netWorth = cash + investments + debt;
+
+        card.innerHTML += `
+          <div class="snapshot-grid">
+            <div>
+              <p class="label">Total Cash</p>
+              <p class="value">$${cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p class="label">Investments</p>
+              <p class="value">$${investments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p class="label">Debt</p>
+              <p class="value debt">$${Math.abs(debt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p class="label">Net Worth</p>
+              <p class="value highlight">$${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+        `;
+        return card;
+      }
+
+      renderAccountsCard() {
+        const card = this.createCard('Bank & Cash Accounts');
+        const list = document.createElement('ul');
+        list.className = 'account-list';
+
+        this.accounts.forEach((account, index) => {
+          const item = document.createElement('li');
+          item.innerHTML = `
+            <div>
+              <p class="account-name">${account.name}</p>
+              <span class="account-type">${account.type}</span>
+            </div>
+            <div class="account-controls">
+              <p class="account-balance ${account.balance < 0 ? 'negative' : ''}">${account.formattedBalance()}</p>
+              <div class="control-buttons">
+                <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${account.name}">✏️</button>
+                <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${account.name}">🗑️</button>
+              </div>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+
+        list.addEventListener('click', event => this.handleAccountListClick(event));
+        card.appendChild(list);
+
+        const form = document.createElement('form');
+        form.className = 'entity-form';
+        form.innerHTML = `
+          <h4>${this.editingAccountIndex !== null ? 'Update Account' : 'Add Account'}</h4>
+          <div class="form-grid">
+            <label>Name <input type="text" name="name" required></label>
+            <label>Type <input type="text" name="type" placeholder="e.g. Savings" required></label>
+            <label>Balance <input type="number" name="balance" step="0.01" required></label>
+          </div>
+          <input type="hidden" name="index" value="">
+          <div class="form-actions">
+            <button type="submit" class="btn primary">${this.editingAccountIndex !== null ? 'Save Changes' : 'Add Account'}</button>
+            <button type="button" class="btn text" data-action="reset">Clear</button>
+          </div>
+        `;
+
+        form.addEventListener('submit', event => this.handleAccountSubmit(event));
+        form.querySelector('[data-action="reset"]').addEventListener('click', () => {
+          this.editingAccountIndex = null;
+          this.render();
+        });
+
+        if (this.editingAccountIndex !== null) {
+          const account = this.accounts[this.editingAccountIndex];
+          if (account) {
+            form.elements.name.value = account.name;
+            form.elements.type.value = account.type;
+            form.elements.balance.value = account.balance;
+            form.elements.index.value = this.editingAccountIndex;
+          }
+        }
+
+        card.appendChild(form);
+        return card;
+      }
+
+      renderBudgetCard() {
+        const card = this.createCard('Budget Overview');
+        this.budgets.forEach((category, index) => {
+          const row = document.createElement('div');
+          row.className = 'budget-row';
+
+          const status = category.status();
+          const remaining = category.remaining();
+          let statusLabel = 'On Track';
+          if (status === 'warning') {
+            statusLabel = 'Close to Limit';
+          } else if (status === 'over') {
+            statusLabel = 'Over Budget';
+          }
+
+          row.innerHTML = `
+            <div class="budget-header">
+              <div>
+                <p class="budget-name">${category.name}</p>
+                <p class="budget-detail">Spent $${category.spent.toLocaleString()} of $${category.limit.toLocaleString()}</p>
+              </div>
+              <span class="status-pill ${status}">${statusLabel}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress ${status}" style="width: ${category.percentUsed()}%"></div>
+            </div>
+            <div class="budget-footer">
+              <p class="budget-remaining">${remaining >= 0 ? 'Remaining' : 'Over by'} $${Math.abs(remaining).toLocaleString()}</p>
+              <div class="control-buttons">
+                <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${category.name} budget">✏️</button>
+                <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${category.name} budget">🗑️</button>
+              </div>
+            </div>
+          `;
+
+          card.appendChild(row);
+        });
+
+        const form = document.createElement('form');
+        form.className = 'entity-form';
+        form.innerHTML = `
+          <h4>${this.editingBudgetIndex !== null ? 'Update Budget Category' : 'Add Budget Category'}</h4>
+          <div class="form-grid">
+            <label>Name <input type="text" name="name" required></label>
+            <label>Limit <input type="number" name="limit" step="0.01" min="0" required></label>
+            <label>Spent <input type="number" name="spent" step="0.01" min="0" required></label>
+          </div>
+          <input type="hidden" name="index" value="">
+          <div class="form-actions">
+            <button type="submit" class="btn primary">${this.editingBudgetIndex !== null ? 'Save Changes' : 'Add Category'}</button>
+            <button type="button" class="btn text" data-action="reset">Clear</button>
+          </div>
+        `;
+
+        form.addEventListener('submit', event => this.handleBudgetSubmit(event));
+        form.querySelector('[data-action="reset"]').addEventListener('click', () => {
+          this.editingBudgetIndex = null;
+          this.render();
+        });
+
+        if (this.editingBudgetIndex !== null) {
+          const budget = this.budgets[this.editingBudgetIndex];
+          if (budget) {
+            form.elements.name.value = budget.name;
+            form.elements.limit.value = budget.limit;
+            form.elements.spent.value = budget.spent;
+            form.elements.index.value = this.editingBudgetIndex;
+          }
+        }
+
+        card.appendChild(form);
+        card.addEventListener('click', event => this.handleBudgetClick(event));
+        return card;
+      }
+
+      renderInvestmentsCard() {
+        const card = this.createCard('Investments Performance');
+        const list = document.createElement('ul');
+        list.className = 'investment-list';
+
+        this.investments.forEach((investment, index) => {
+          const item = document.createElement('li');
+          item.innerHTML = `
+            <div>
+              <p class="investment-name">${investment.name}</p>
+              <p class="investment-value">${investment.formattedValue()}</p>
+            </div>
+            <div class="investment-controls">
+              <span class="change ${investment.change >= 0 ? 'positive' : 'negative'}">${investment.changeLabel()}</span>
+              <div class="control-buttons">
+                <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${investment.name} investment">✏️</button>
+                <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${investment.name} investment">🗑️</button>
+              </div>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+
+        list.addEventListener('click', event => this.handleInvestmentListClick(event));
+        card.appendChild(list);
+
+        const form = document.createElement('form');
+        form.className = 'entity-form';
+        form.innerHTML = `
+          <h4>${this.editingInvestmentIndex !== null ? 'Update Investment' : 'Add Investment'}</h4>
+          <div class="form-grid">
+            <label>Name <input type="text" name="name" required></label>
+            <label>Value <input type="number" name="value" step="0.01" min="0" required></label>
+            <label>Change % <input type="number" name="change" step="0.01" required></label>
+          </div>
+          <input type="hidden" name="index" value="">
+          <div class="form-actions">
+            <button type="submit" class="btn primary">${this.editingInvestmentIndex !== null ? 'Save Changes' : 'Add Investment'}</button>
+            <button type="button" class="btn text" data-action="reset">Clear</button>
+          </div>
+        `;
+
+        form.addEventListener('submit', event => this.handleInvestmentSubmit(event));
+        form.querySelector('[data-action="reset"]').addEventListener('click', () => {
+          this.editingInvestmentIndex = null;
+          this.render();
+        });
+
+        if (this.editingInvestmentIndex !== null) {
+          const investment = this.investments[this.editingInvestmentIndex];
+          if (investment) {
+            form.elements.name.value = investment.name;
+            form.elements.value.value = investment.value;
+            form.elements.change.value = (investment.change * 100).toFixed(2);
+            form.elements.index.value = this.editingInvestmentIndex;
+          }
+        }
+
+        card.appendChild(form);
+        return card;
+      }
+
+      renderInsightsCard() {
+        const card = this.createCard('Spending Insights');
+        const insights = [];
+
+        this.budgets.forEach(category => {
+          if (category.status() === 'over') {
+            insights.push(`You have exceeded your ${category.name.toLowerCase()} budget. Consider adjusting next month.`);
+          } else if (category.status() === 'warning') {
+            insights.push(`Almost at the limit for ${category.name}. $${category.remaining().toLocaleString()} left to spend.`);
+          }
+        });
+
+        if (insights.length === 0) {
+          insights.push('All budgets are healthy. Keep up the great work!');
+        }
+
+        if (this.totalDebt() < 0) {
+          insights.push('Your revolving credit balance is growing. Plan a payment to avoid interest.');
+        }
+
+        const list = document.createElement('ul');
+        list.className = 'insights-list';
+        insights.forEach(text => {
+          const item = document.createElement('li');
+          item.textContent = text;
+          list.appendChild(item);
+        });
+
+        card.appendChild(list);
+        return card;
+      }
+
+      renderGoalsCard() {
+        const card = this.createCard('Financial Goals');
+
+        if (this.goals.length === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'empty-state';
+          empty.textContent = 'Create a savings or investing goal to track your progress.';
+          card.appendChild(empty);
+        } else {
+          const list = document.createElement('ul');
+          list.className = 'goal-list';
+
+          this.goals.forEach((goal, index) => {
+            const status = goal.status();
+            let statusLabel = 'Active';
+            if (status === 'warning') {
+              statusLabel = 'Almost There';
+            } else if (status === 'complete') {
+              statusLabel = 'Complete';
+            }
+            const item = document.createElement('li');
+            item.innerHTML = `
+              <div class="goal-header">
+                <div>
+                  <p class="goal-name">${goal.name}</p>
+                  <p class="goal-detail">$${goal.current.toLocaleString()} saved of $${goal.target.toLocaleString()}</p>
+                </div>
+                <span class="status-pill ${status}">${statusLabel}</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress ${status}" style="width: ${goal.progress()}%"></div>
+              </div>
+              <div class="goal-footer">
+                <p class="goal-progress">${goal.progress()}% to goal</p>
+                <div class="control-buttons">
+                  <button class="icon-button" data-action="edit" data-index="${index}" aria-label="Edit ${goal.name} goal">✏️</button>
+                  <button class="icon-button" data-action="delete" data-index="${index}" aria-label="Remove ${goal.name} goal">🗑️</button>
+                </div>
+              </div>
+            `;
+            list.appendChild(item);
+          });
+
+          list.addEventListener('click', event => this.handleGoalListClick(event));
+          card.appendChild(list);
+        }
+
+        const form = document.createElement('form');
+        form.className = 'entity-form';
+        form.innerHTML = `
+          <h4>${this.editingGoalIndex !== null ? 'Update Goal' : 'Add Goal'}</h4>
+          <div class="form-grid">
+            <label>Goal Name <input type="text" name="name" required></label>
+            <label>Target Amount <input type="number" name="target" step="0.01" min="0" required></label>
+            <label>Current Saved <input type="number" name="current" step="0.01" min="0" required></label>
+          </div>
+          <input type="hidden" name="index" value="">
+          <div class="form-actions">
+            <button type="submit" class="btn primary">${this.editingGoalIndex !== null ? 'Save Changes' : 'Add Goal'}</button>
+            <button type="button" class="btn text" data-action="reset">Clear</button>
+          </div>
+        `;
+
+        form.addEventListener('submit', event => this.handleGoalSubmit(event));
+        form.querySelector('[data-action="reset"]').addEventListener('click', () => {
+          this.editingGoalIndex = null;
+          this.render();
+        });
+
+        if (this.editingGoalIndex !== null) {
+          const goal = this.goals[this.editingGoalIndex];
+          if (goal) {
+            form.elements.name.value = goal.name;
+            form.elements.target.value = goal.target;
+            form.elements.current.value = goal.current;
+            form.elements.index.value = this.editingGoalIndex;
+          }
+        }
+
+        card.appendChild(form);
+        return card;
+      }
+
+      renderActionsCard() {
+        const card = this.createCard('Quick Actions');
+
+        const actions = document.createElement('div');
+        actions.className = 'quick-actions';
+
+        const planButton = document.createElement('button');
+        planButton.className = 'btn outline';
+        planButton.textContent = 'Plan Next Month Budget';
+        planButton.addEventListener('click', () => {
+          if (this.budgets.length === 0) {
+            alert('Add a budget category to plan ahead.');
+            return;
+          }
+          const highest = this.budgets.reduce((prev, current) => (current.spent > prev.spent ? current : prev), this.budgets[0]);
+          const message = `Focus on ${highest.name} next month. It has the highest spending at $${highest.spent.toLocaleString()}.`;
+          alert(message);
+        });
+
+        const investButton = document.createElement('button');
+        investButton.className = 'btn outline';
+        investButton.textContent = 'Rebalance Portfolio';
+        investButton.addEventListener('click', () => {
+          if (this.investments.length === 0) {
+            alert('Add an investment to begin tracking performance.');
+            return;
+          }
+          const underperformer = this.investments.find(item => item.change < 0);
+          if (underperformer) {
+            alert(`Consider reviewing your ${underperformer.name} position. It is down ${underperformer.changeLabel()}.`);
+          } else {
+            alert('All investments are performing well. You can schedule a periodic rebalance.');
+          }
+        });
+
+        const logoutBtn = document.createElement('button');
+        logoutBtn.className = 'login-btn';
+        logoutBtn.textContent = 'Log Out';
+        logoutBtn.addEventListener('click', () => this.logout());
+
+        actions.append(planButton, investButton, logoutBtn);
+        card.appendChild(actions);
+        return card;
+      }
+
+      renderDataCard() {
+        const card = this.createCard('Data & Personalization');
+        card.classList.add('data-panel');
+
+        const description = document.createElement('p');
+        description.className = 'data-description';
+        description.textContent = 'Keep your finances portable. Import an existing plan, rename your profile, or save everything as a JSON file to continue later.';
+        card.appendChild(description);
+
+        const nameForm = document.createElement('form');
+        nameForm.className = 'entity-form';
+        nameForm.innerHTML = `
+          <h4>Profile Settings</h4>
+          <div class="form-grid">
+            <label>Display Name <input type="text" name="displayName" value="${this.user}"></label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Save Name</button>
+          </div>
+        `;
+
+        nameForm.addEventListener('submit', event => {
+          event.preventDefault();
+          const displayName = nameForm.elements.displayName.value.trim();
+          if (!displayName) {
+            alert('Please enter a display name.');
+            return;
+          }
+          this.user = displayName;
+          sessionStorage.setItem('currentUser', this.user);
+          this.render();
+        });
+
+        card.appendChild(nameForm);
+
+        const controls = document.createElement('div');
+        controls.className = 'data-controls';
+
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'btn outline';
+        exportBtn.textContent = 'Export Profile JSON';
+        exportBtn.addEventListener('click', () => this.exportData());
+
+        const importLabel = document.createElement('label');
+        importLabel.className = 'file-upload';
+        importLabel.textContent = 'Import Profile JSON';
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'application/json';
+        fileInput.addEventListener('change', event => {
+          this.importData(event.target.files[0]);
+          event.target.value = '';
+        });
+        importLabel.appendChild(fileInput);
+
+        controls.append(exportBtn, importLabel);
+        card.appendChild(controls);
+
+        return card;
+      }
+
+      handleAccountListClick(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const index = Number.parseInt(button.dataset.index, 10);
+        if (Number.isNaN(index)) return;
+
+        if (button.dataset.action === 'edit') {
+          this.editingAccountIndex = index;
+          this.render();
+        } else if (button.dataset.action === 'delete') {
+          const account = this.accounts[index];
+          if (!account) return;
+          if (confirm(`Remove the ${account.name} account?`)) {
+            this.accounts.splice(index, 1);
+            this.editingAccountIndex = null;
+            this.render();
+          }
+        }
+      }
+
+      handleBudgetClick(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const index = Number.parseInt(button.dataset.index, 10);
+        if (Number.isNaN(index)) return;
+
+        if (button.dataset.action === 'edit') {
+          this.editingBudgetIndex = index;
+          this.render();
+        } else if (button.dataset.action === 'delete') {
+          const budget = this.budgets[index];
+          if (!budget) return;
+          if (confirm(`Delete the ${budget.name} category?`)) {
+            this.budgets.splice(index, 1);
+            this.editingBudgetIndex = null;
+            this.render();
+          }
+        }
+      }
+
+      handleInvestmentListClick(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const index = Number.parseInt(button.dataset.index, 10);
+        if (Number.isNaN(index)) return;
+
+        if (button.dataset.action === 'edit') {
+          this.editingInvestmentIndex = index;
+          this.render();
+        } else if (button.dataset.action === 'delete') {
+          const investment = this.investments[index];
+          if (!investment) return;
+          if (confirm(`Remove ${investment.name} from your portfolio?`)) {
+            this.investments.splice(index, 1);
+            this.editingInvestmentIndex = null;
+            this.render();
+          }
+        }
+      }
+
+      handleGoalListClick(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const index = Number.parseInt(button.dataset.index, 10);
+        if (Number.isNaN(index)) return;
+
+        if (button.dataset.action === 'edit') {
+          this.editingGoalIndex = index;
+          this.render();
+        } else if (button.dataset.action === 'delete') {
+          const goal = this.goals[index];
+          if (!goal) return;
+          if (confirm(`Delete the ${goal.name} goal?`)) {
+            this.goals.splice(index, 1);
+            this.editingGoalIndex = null;
+            this.render();
+          }
+        }
+      }
+
+      handleAccountSubmit(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const formData = new FormData(form);
+        const name = formData.get('name').trim();
+        const type = formData.get('type').trim();
+        const balance = Number.parseFloat(formData.get('balance'));
+        const indexValue = formData.get('index');
+
+        if (!name || !type || Number.isNaN(balance)) {
+          alert('Please provide a name, account type, and balance.');
+          return;
+        }
+
+        if (indexValue !== '') {
+          const index = Number.parseInt(indexValue, 10);
+          if (!Number.isNaN(index) && this.accounts[index]) {
+            this.accounts[index] = new Account(name, type, balance);
+          }
+        } else {
+          this.accounts.push(new Account(name, type, balance));
+        }
+
+        this.editingAccountIndex = null;
+        this.render();
+      }
+
+      handleBudgetSubmit(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const formData = new FormData(form);
+        const name = formData.get('name').trim();
+        const limit = Number.parseFloat(formData.get('limit'));
+        const spent = Number.parseFloat(formData.get('spent'));
+        const indexValue = formData.get('index');
+
+        if (!name || Number.isNaN(limit) || Number.isNaN(spent)) {
+          alert('Please provide a category name, limit, and amount spent.');
+          return;
+        }
+
+        if (indexValue !== '') {
+          const index = Number.parseInt(indexValue, 10);
+          if (!Number.isNaN(index) && this.budgets[index]) {
+            this.budgets[index] = new BudgetCategory(name, limit, spent);
+          }
+        } else {
+          this.budgets.push(new BudgetCategory(name, limit, spent));
+        }
+
+        this.editingBudgetIndex = null;
+        this.render();
+      }
+
+      handleInvestmentSubmit(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const formData = new FormData(form);
+        const name = formData.get('name').trim();
+        const value = Number.parseFloat(formData.get('value'));
+        const changePercent = Number.parseFloat(formData.get('change'));
+        const indexValue = formData.get('index');
+
+        if (!name || Number.isNaN(value) || Number.isNaN(changePercent)) {
+          alert('Please provide an investment name, value, and performance change.');
+          return;
+        }
+
+        const changeDecimal = changePercent / 100;
+
+        if (indexValue !== '') {
+          const index = Number.parseInt(indexValue, 10);
+          if (!Number.isNaN(index) && this.investments[index]) {
+            this.investments[index] = new Investment(name, value, changeDecimal);
+          }
+        } else {
+          this.investments.push(new Investment(name, value, changeDecimal));
+        }
+
+        this.editingInvestmentIndex = null;
+        this.render();
+      }
+
+      handleGoalSubmit(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const formData = new FormData(form);
+        const name = formData.get('name').trim();
+        const target = Number.parseFloat(formData.get('target'));
+        const current = Number.parseFloat(formData.get('current'));
+        const indexValue = formData.get('index');
+
+        if (!name || Number.isNaN(target) || Number.isNaN(current)) {
+          alert('Please provide a goal name, target amount, and current progress.');
+          return;
+        }
+
+        if (indexValue !== '') {
+          const index = Number.parseInt(indexValue, 10);
+          if (!Number.isNaN(index) && this.goals[index]) {
+            this.goals[index] = new Goal(name, target, current);
+          }
+        } else {
+          this.goals.push(new Goal(name, target, current));
+        }
+
+        this.editingGoalIndex = null;
+        this.render();
+      }
+
+      exportData() {
+        const payload = {
+          user: this.user,
+          generatedAt: new Date().toISOString(),
+          accounts: this.accounts.map(account => ({
+            name: account.name,
+            type: account.type,
+            balance: account.balance
+          })),
+          budgets: this.budgets.map(category => ({
+            name: category.name,
+            limit: category.limit,
+            spent: category.spent
+          })),
+          investments: this.investments.map(investment => ({
+            name: investment.name,
+            value: investment.value,
+            change: investment.change
+          })),
+          goals: this.goals.map(goal => ({
+            name: goal.name,
+            target: goal.target,
+            current: goal.current
+          }))
+        };
+
+        const filenameUser = (this.user || 'profile').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'profile';
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${filenameUser}-financial-data.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      importData(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            this.applyImportedData(data);
+            alert('Profile imported successfully. Your dashboard has been updated.');
+          } catch (error) {
+            console.error('Import failed:', error);
+            alert('Unable to import that file. Please ensure it is a valid JSON export.');
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      applyImportedData(data) {
+        if (data.user) {
+          this.user = data.user;
+          sessionStorage.setItem('currentUser', this.user);
+        }
+
+        if (Array.isArray(data.accounts)) {
+          this.accounts = data.accounts
+            .filter(item => item && typeof item.name === 'string')
+            .map(item => new Account(item.name, item.type || 'Account', Number.parseFloat(item.balance) || 0));
+        }
+
+        if (Array.isArray(data.budgets)) {
+          this.budgets = data.budgets
+            .filter(item => item && typeof item.name === 'string')
+            .map(item => new BudgetCategory(item.name, Number.parseFloat(item.limit) || 0, Number.parseFloat(item.spent) || 0));
+        }
+
+        if (Array.isArray(data.investments)) {
+          this.investments = data.investments
+            .filter(item => item && typeof item.name === 'string')
+            .map(item => new Investment(item.name, Number.parseFloat(item.value) || 0, Number.parseFloat(item.change) || 0));
+        }
+
+        if (Array.isArray(data.goals)) {
+          this.goals = data.goals
+            .filter(item => item && typeof item.name === 'string')
+            .map(item => new Goal(item.name, Number.parseFloat(item.target) || 0, Number.parseFloat(item.current) || 0));
+        }
+
+        this.editingAccountIndex = null;
+        this.editingBudgetIndex = null;
+        this.editingInvestmentIndex = null;
+        this.editingGoalIndex = null;
+        this.render();
+      }
+
+      createCard(title) {
+        const card = document.createElement('div');
+        card.className = 'dashboard-panel';
+
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        card.appendChild(heading);
+        return card;
       }
 
       showAccessDenied() {
@@ -91,11 +953,10 @@
             <p>You must <a href="login.html">log in</a> to view this page.</p>
           </div>
         `;
-        setTimeout(() => location.href = 'login.html', 3000);
+        setTimeout(() => (location.href = 'login.html'), 3000);
       }
     }
 
-    // Initialize Dashboard
     const myDashboard = new Dashboard('dashboard-container');
     myDashboard.init();
   </script>
