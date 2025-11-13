@@ -29,13 +29,89 @@
   </section>
 
   <script>
+    class Account {
+      constructor(name, type, balance) {
+        this.name = name;
+        this.type = type;
+        this.balance = balance;
+      }
+
+      formattedBalance() {
+        const prefix = this.balance < 0 ? '-$' : '$';
+        return `${prefix}${Math.abs(this.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+    }
+
+    class BudgetCategory {
+      constructor(name, limit, spent) {
+        this.name = name;
+        this.limit = limit;
+        this.spent = spent;
+      }
+
+      percentUsed() {
+        if (this.limit === 0) {
+          return 0;
+        }
+        return Math.min(100, Math.round((this.spent / this.limit) * 100));
+      }
+
+      status() {
+        if (this.spent > this.limit) {
+          return 'over';
+        }
+        if (this.spent / this.limit >= 0.85) {
+          return 'warning';
+        }
+        return 'good';
+      }
+
+      remaining() {
+        return this.limit - this.spent;
+      }
+    }
+
+    class Investment {
+      constructor(name, value, change) {
+        this.name = name;
+        this.value = value;
+        this.change = change; // stored as decimal (e.g., 0.042 => 4.2%)
+      }
+
+      formattedValue() {
+        return `$${this.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+
+      changeLabel() {
+        const prefix = this.change >= 0 ? '+' : '';
+        return `${prefix}${(this.change * 100).toFixed(1)}%`;
+      }
+    }
+
     // Dashboard Class
     class Dashboard {
       constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.user = sessionStorage.getItem('currentUser') || 'User';
         this.loggedIn = sessionStorage.getItem('loggedIn') === 'true';
-        this.balance = 55983004328; // Example
+        this.accounts = [
+          new Account('Checking', 'Daily Spending', 4210.52),
+          new Account('Savings', 'Emergency Fund', 12250.00),
+          new Account('Brokerage', 'Investments', 18990.87),
+          new Account('Credit Card', 'Revolving Credit', -870.14)
+        ];
+        this.budgets = [
+          new BudgetCategory('Housing', 1400, 1325),
+          new BudgetCategory('Groceries', 650, 488),
+          new BudgetCategory('Transportation', 250, 210),
+          new BudgetCategory('Dining Out', 200, 198),
+          new BudgetCategory('Investing', 800, 880)
+        ];
+        this.investments = [
+          new Investment('Index Fund', 12500, 0.042),
+          new Investment('High-Yield Savings', 5200, 0.018),
+          new Investment('Crypto Basket', 1290, -0.065)
+        ];
       }
 
       init() {
@@ -47,41 +123,234 @@
       }
 
       render() {
-        // Clear container
         this.container.innerHTML = '';
 
-        // Create card
-        const card = document.createElement('div');
-        card.className = 'dashboard-card';
+        const header = document.createElement('div');
+        header.className = 'dashboard-header';
+        header.innerHTML = `
+          <h2>Welcome back, ${this.user}!</h2>
+          <p>Your personal command center for budgeting, banking, and investing.</p>
+        `;
+        this.container.appendChild(header);
 
-        // Welcome
-        const welcome = document.createElement('h2');
-        welcome.textContent = `Welcome, ${this.user}!`;
-        card.appendChild(welcome);
+        const grid = document.createElement('div');
+        grid.className = 'dashboard-grid';
+        this.container.appendChild(grid);
 
-        // Balance
-        const balanceLabel = document.createElement('p');
-        balanceLabel.textContent = 'Your current balance is:';
-        card.appendChild(balanceLabel);
-
-        const balanceAmount = document.createElement('h3');
-        balanceAmount.textContent = `$${this.balance.toLocaleString()}`;
-        card.appendChild(balanceAmount);
-
-        // Logout button
-        const logoutBtn = document.createElement('button');
-        logoutBtn.className = 'login-btn';
-        logoutBtn.textContent = 'Log Out';
-        logoutBtn.addEventListener('click', () => this.logout());
-        card.appendChild(logoutBtn);
-
-        this.container.appendChild(card);
+        grid.appendChild(this.renderSummaryCard());
+        grid.appendChild(this.renderAccountsCard());
+        grid.appendChild(this.renderBudgetCard());
+        grid.appendChild(this.renderInvestmentsCard());
+        grid.appendChild(this.renderInsightsCard());
+        grid.appendChild(this.renderActionsCard());
       }
 
       logout() {
         sessionStorage.removeItem('loggedIn');
         sessionStorage.removeItem('currentUser');
         location.href = 'login.html';
+      }
+
+      totalCash() {
+        return this.accounts
+          .filter(account => account.balance >= 0)
+          .reduce((total, account) => total + account.balance, 0);
+      }
+
+      totalDebt() {
+        return this.accounts
+          .filter(account => account.balance < 0)
+          .reduce((total, account) => total + account.balance, 0);
+      }
+
+      totalInvestments() {
+        return this.investments.reduce((total, investment) => total + investment.value, 0);
+      }
+
+      renderSummaryCard() {
+        const card = this.createCard('Financial Snapshot');
+        const cash = this.totalCash();
+        const debt = this.totalDebt();
+        const investments = this.totalInvestments();
+        const netWorth = cash + investments + debt;
+
+        card.innerHTML += `
+          <div class="snapshot-grid">
+            <div>
+              <p class="label">Total Cash</p>
+              <p class="value">$${cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p class="label">Investments</p>
+              <p class="value">$${investments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p class="label">Debt</p>
+              <p class="value debt">$${Math.abs(debt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p class="label">Net Worth</p>
+              <p class="value highlight">$${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+        `;
+        return card;
+      }
+
+      renderAccountsCard() {
+        const card = this.createCard('Bank & Cash Accounts');
+        const list = document.createElement('ul');
+        list.className = 'account-list';
+
+        this.accounts.forEach(account => {
+          const item = document.createElement('li');
+          item.innerHTML = `
+            <div>
+              <p class="account-name">${account.name}</p>
+              <span class="account-type">${account.type}</span>
+            </div>
+            <p class="account-balance ${account.balance < 0 ? 'negative' : ''}">${account.formattedBalance()}</p>
+          `;
+          list.appendChild(item);
+        });
+
+        card.appendChild(list);
+        return card;
+      }
+
+      renderBudgetCard() {
+        const card = this.createCard('Budget Overview');
+        this.budgets.forEach(category => {
+          const row = document.createElement('div');
+          row.className = 'budget-row';
+
+          const status = category.status();
+          const remaining = category.remaining();
+          let statusLabel = 'On Track';
+          if (status === 'warning') {
+            statusLabel = 'Close to Limit';
+          } else if (status === 'over') {
+            statusLabel = 'Over Budget';
+          }
+
+          row.innerHTML = `
+            <div class="budget-header">
+              <div>
+                <p class="budget-name">${category.name}</p>
+                <p class="budget-detail">Spent $${category.spent.toLocaleString()} of $${category.limit.toLocaleString()}</p>
+              </div>
+              <span class="status-pill ${status}">${statusLabel}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress ${status}" style="width: ${category.percentUsed()}%"></div>
+            </div>
+            <p class="budget-remaining">${remaining >= 0 ? 'Remaining' : 'Over by'} $${Math.abs(remaining).toLocaleString()}</p>
+          `;
+
+          card.appendChild(row);
+        });
+
+        return card;
+      }
+
+      renderInvestmentsCard() {
+        const card = this.createCard('Investments Performance');
+        const list = document.createElement('ul');
+        list.className = 'investment-list';
+
+        this.investments.forEach(investment => {
+          const item = document.createElement('li');
+          item.innerHTML = `
+            <div>
+              <p class="investment-name">${investment.name}</p>
+              <p class="investment-value">${investment.formattedValue()}</p>
+            </div>
+            <span class="change ${investment.change >= 0 ? 'positive' : 'negative'}">${investment.changeLabel()}</span>
+          `;
+          list.appendChild(item);
+        });
+
+        card.appendChild(list);
+        return card;
+      }
+
+      renderInsightsCard() {
+        const card = this.createCard('Spending Insights');
+        const insights = [];
+
+        this.budgets.forEach(category => {
+          if (category.status() === 'over') {
+            insights.push(`You have exceeded your ${category.name.toLowerCase()} budget. Consider adjusting next month.`);
+          } else if (category.status() === 'warning') {
+            insights.push(`Almost at the limit for ${category.name}. $${category.remaining().toLocaleString()} left to spend.`);
+          }
+        });
+
+        if (insights.length === 0) {
+          insights.push('All budgets are healthy. Keep up the great work!');
+        }
+
+        if (this.totalDebt() < 0) {
+          insights.push('Your revolving credit balance is growing. Plan a payment to avoid interest.');
+        }
+
+        const list = document.createElement('ul');
+        list.className = 'insights-list';
+        insights.forEach(text => {
+          const item = document.createElement('li');
+          item.textContent = text;
+          list.appendChild(item);
+        });
+
+        card.appendChild(list);
+        return card;
+      }
+
+      renderActionsCard() {
+        const card = this.createCard('Quick Actions');
+
+        const actions = document.createElement('div');
+        actions.className = 'quick-actions';
+
+        const planButton = document.createElement('button');
+        planButton.className = 'btn outline';
+        planButton.textContent = 'Plan Next Month Budget';
+        planButton.addEventListener('click', () => {
+          const highest = this.budgets.reduce((prev, current) => (current.spent > prev.spent ? current : prev), this.budgets[0]);
+          const message = `Focus on ${highest.name} next month. It has the highest spending at $${highest.spent.toLocaleString()}.`;
+          alert(message);
+        });
+
+        const investButton = document.createElement('button');
+        investButton.className = 'btn outline';
+        investButton.textContent = 'Rebalance Portfolio';
+        investButton.addEventListener('click', () => {
+          const underperformer = this.investments.find(item => item.change < 0);
+          if (underperformer) {
+            alert(`Consider reviewing your ${underperformer.name} position. It is down ${underperformer.changeLabel()}.`);
+          } else {
+            alert('All investments are performing well. You can schedule a periodic rebalance.');
+          }
+        });
+
+        const logoutBtn = document.createElement('button');
+        logoutBtn.className = 'login-btn';
+        logoutBtn.textContent = 'Log Out';
+        logoutBtn.addEventListener('click', () => this.logout());
+
+        actions.append(planButton, investButton, logoutBtn);
+        card.appendChild(actions);
+        return card;
+      }
+
+      createCard(title) {
+        const card = document.createElement('div');
+        card.className = 'dashboard-panel';
+
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        card.appendChild(heading);
+        return card;
       }
 
       showAccessDenied() {
